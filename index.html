@@ -75,10 +75,10 @@ input,select{width:100%;padding:6px;font-size:12px;border-radius:6px;border:1px 
 <thead>
 <tr>
 <th data-key="name">City</th>
-<th data-key="time">Local Time</th>
 <th data-key="weather">Weather</th>
 <th data-key="low">Low °C</th>
 <th data-key="high">High °C</th>
+<th data-key="time">Local Time</th>
 </tr>
 </thead>
 <tbody id="weatherBody"></tbody>
@@ -142,6 +142,14 @@ Last Update —
 </select>
 </div>
 
+<div class="form-group">
+<label>Temperature Color Scale</label>
+<select id="tempColorInput">
+<option value="on">On</option>
+<option value="off">Off</option>
+</select>
+</div>
+
 <div class="actions">
 <button onclick="closeSettings()">Cancel</button>
 <button onclick="saveSettings()">Save</button>
@@ -158,6 +166,7 @@ if(!localStorage.getItem("cities")) localStorage.setItem("cities",DEFAULT_CITIES
 if(!localStorage.getItem("displayMode")) localStorage.setItem("displayMode","both");
 if(!localStorage.getItem("fontSize")) localStorage.setItem("fontSize","12");
 if(!localStorage.getItem("theme")) localStorage.setItem("theme","dark");
+if(!localStorage.getItem("tempColor")) localStorage.setItem("tempColor","on");
 
 const bodyEl=document.getElementById("weatherBody");
 const modal=document.getElementById("settingsModal");
@@ -206,6 +215,7 @@ frequencyInput.value=localStorage.getItem("frequency")||3600000;
 displayModeInput.value=localStorage.getItem("displayMode");
 fontSizeInput.value=localStorage.getItem("fontSize");
 themeInput.value=localStorage.getItem("theme");
+tempColorInput.value=localStorage.getItem("tempColor");
 modal.style.display="flex";
 }
 
@@ -218,6 +228,7 @@ localStorage.setItem("frequency",frequencyInput.value);
 localStorage.setItem("displayMode",displayModeInput.value);
 localStorage.setItem("fontSize",fontSizeInput.value);
 localStorage.setItem("theme",themeInput.value);
+localStorage.setItem("tempColor",tempColorInput.value);
 applyFontSize();
 applyTheme();
 closeSettings();
@@ -236,6 +247,16 @@ return res.json();
 function getLocalTime(offset){
 const utc=new Date().getTime()+new Date().getTimezoneOffset()*60000;
 return new Date(utc+offset*1000);
+}
+
+function getTempColor(temp){
+const dark=document.body.classList.contains("dark");
+if(temp<=0) return dark?"#93c5fd":"#1d4ed8";
+if(temp<=10) return dark?"#60a5fa":"#2563eb";
+if(temp<=20) return dark?"#34d399":"#059669";
+if(temp<=30) return dark?"#facc15":"#ca8a04";
+if(temp<=35) return dark?"#fb923c":"#ea580c";
+return dark?"#f87171":"#dc2626";
 }
 
 async function loadWeather(){
@@ -259,15 +280,29 @@ renderTable();
 
 function renderTable(){
 const mode=localStorage.getItem("displayMode");
+const colorOn=localStorage.getItem("tempColor")==="on";
 bodyEl.innerHTML="";
+
 weatherData.forEach(item=>{
+
+const lowColor=colorOn?getTempColor(item.low):"inherit";
+const highColor=colorOn?getTempColor(item.high):"inherit";
+
 const iconUrl=`https://openweathermap.org/img/wn/${item.icon}@2x.png`;
 let weatherContent="";
+
 if(mode==="text") weatherContent=item.weather;
 if(mode==="icon") weatherContent=`<img class=\"weather-icon\" src=\"${iconUrl}\"/>`;
 if(mode==="both") weatherContent=`<div class=\"weather-cell\"><img class=\"weather-icon\" src=\"${iconUrl}\"/><span>${item.weather}</span></div>`;
+
 const row=document.createElement("tr");
-row.innerHTML=`<td>${item.name}</td><td>${item.time}</td><td>${weatherContent}</td><td>${item.low.toFixed(1)}</td><td>${item.high.toFixed(1)}</td>`;
+row.innerHTML=`
+<td>${item.name}</td>
+<td>${weatherContent}</td>
+<td style="color:${lowColor};font-weight:600;">${item.low.toFixed(1)}</td>
+<td style="color:${highColor};font-weight:600;">${item.high.toFixed(1)}</td>
+<td>${item.time}</td>`;
+
 bodyEl.appendChild(row);
 });
 }
