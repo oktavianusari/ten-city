@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>10 City Weather</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #111827;
+      --border: #e5e7eb;
+      --font-size: 12px;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      display: flex;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .app {
+      width: 620px;
+      height: 500px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-size: var(--font-size);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: inherit;
+    }
+
+    thead { background: #fafafa; }
+
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      font-size: 0.9em;
+      color: #6b7280;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    th.sort-asc::after { content: " ▲"; font-size: 0.7em; }
+    th.sort-desc::after { content: " ▼"; font-size: 0.7em; }
+
+    tbody tr { background: #ffffff; }
+    tbody tr:hover { background: #f9fafb; }
+
+    .weather-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .weather-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .footer {
+      margin-top: auto;
+      padding: 8px;
+      display: flex;
+      justify-content: center;
+      border-top: 1px solid var(--border);
+      background: #fafafa;
+    }
+
+    button {
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: white;
+      cursor: pointer;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 18px;
+      border-radius: 10px;
+      width: 380px;
+      border: 1px solid var(--border);
+    }
+
+    .form-group { margin-bottom: 12px; }
+
+    input, select {
+      width: 100%;
+      padding: 6px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app" id="appRoot">
+  <table>
+    <thead>
+      <tr>
+        <th data-key="name">City Name</th>
+        <th data-key="time">Local Time</th>
+        <th data-key="weather">Weather</th>
+        <th data-key="low">Low °C</th>
+        <th data-key="high">High °C</th>
+      </tr>
+    </thead>
+    <tbody id="weatherBody"></tbody>
+  </table>
+
+  <div class="footer">
+    <button onclick="openSettings()">Settings</button>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="modal-content">
+    <h3 style="margin-top:0">Settings</h3>
+
+    <div class="form-group">
+      <label>OpenWeatherMap API Key</label>
+      <input id="apiKeyInput" />
+    </div>
+
+    <div class="form-group">
+      <label>Cities (max 10, comma separated)</label>
+      <input id="citiesInput" />
+    </div>
+
+    <div class="form-group">
+      <label>Update Frequency</label>
+      <select id="frequencyInput">
+        <option value="1800000">30 Minutes</option>
+        <option value="3600000">1 Hour</option>
+        <option value="10800000">3 Hours</option>
+        <option value="28800000">8 Hours</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Weather Display</label>
+      <select id="displayModeInput">
+        <option value="text">Text Only</option>
+        <option value="icon">Icon Only</option>
+        <option value="both">Text & Icon</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Font Size</label>
+      <select id="fontSizeInput">
+        <option value="11">Small</option>
+        <option value="12">Default</option>
+        <option value="13">Large</option>
+        <option value="14">Extra Large</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button onclick="closeSettings()">Cancel</button>
+      <button onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const bodyEl = document.getElementById("weatherBody");
+  const modal = document.getElementById("settingsModal");
+  const headers = document.querySelectorAll("th");
+  const appRoot = document.getElementById("appRoot");
+
+  let weatherData = [];
+  let currentSort = { key: null, direction: "asc" };
+
+  headers.forEach(th => {
+    th.addEventListener("click", () => sortTable(th.dataset.key, th));
+  });
+
+  function sortTable(key, headerEl) {
+    if (!key) return;
+
+    headers.forEach(h => h.classList.remove("sort-asc", "sort-desc"));
+
+    if (currentSort.key === key) {
+      currentSort.direction = currentSort.direction === "asc" ? "desc" : "asc";
+    } else {
+      currentSort.key = key;
+      currentSort.direction = "asc";
+    }
+
+    headerEl.classList.add(currentSort.direction === "asc" ? "sort-asc" : "sort-desc");
+
+    weatherData.sort((a, b) => {
+      let valA = a[key];
+      let valB = b[key];
+
+      if (typeof valA === "string") {
+        return currentSort.direction === "asc"
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+      }
+
+      return currentSort.direction === "asc" ? valA - valB : valB - valA;
+    });
+
+    renderTable();
+  }
+
+  function formatTime(date) {
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes}${ampm}`;
+  }
+
+  function openSettings() {
+    apiKeyInput.value = localStorage.getItem("apiKey") || "";
+    citiesInput.value = localStorage.getItem("cities") || "";
+    frequencyInput.value = localStorage.getItem("frequency") || 3600000;
+    displayModeInput.value = localStorage.getItem("displayMode") || "both";
+    fontSizeInput.value = localStorage.getItem("fontSize") || "12";
+    modal.style.display = "flex";
+  }
+
+  function closeSettings() { modal.style.display = "none"; }
+
+  function saveSettings() {
+    localStorage.setItem("apiKey", apiKeyInput.value);
+    localStorage.setItem("cities", citiesInput.value);
+    localStorage.setItem("frequency", frequencyInput.value);
+    localStorage.setItem("displayMode", displayModeInput.value);
+    localStorage.setItem("fontSize", fontSizeInput.value);
+
+    applyFontSize();
+    closeSettings();
+    loadWeather();
+    setupAutoRefresh();
+  }
+
+  function applyFontSize() {
+    const size = localStorage.getItem("fontSize") || "12";
+    appRoot.style.setProperty("--font-size", size + "px");
+  }
+
+  async function fetchWeather(city, apiKey) {
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  function getLocalTime(offset) {
+    const utc = new Date().getTime() + new Date().getTimezoneOffset() * 60000;
+    return new Date(utc + offset * 1000);
+  }
+
+  async function loadWeather() {
+    const apiKey = localStorage.getItem("apiKey");
+    const cities = (localStorage.getItem("cities") || "").split(",").map(c => c.trim()).slice(0,10);
+
+    if (!apiKey || cities.length === 0) {
+      bodyEl.innerHTML = `<tr><td colspan="5">Configure settings first.</td></tr>`;
+      return;
+    }
+
+    weatherData = [];
+
+    for (const city of cities) {
+      const data = await fetchWeather(city, apiKey);
+      if (!data) continue;
+
+      weatherData.push({
+        name: data.name,
+        time: formatTime(getLocalTime(data.timezone)),
+        weather: data.weather[0].description.replace(/\b\w/g, l => l.toUpperCase()),
+        low: data.main.temp_min,
+        high: data.main.temp_max,
+        icon: data.weather[0].icon
+      });
+    }
+
+    renderTable();
+  }
+
+  function renderTable() {
+    const mode = localStorage.getItem("displayMode") || "both";
+    bodyEl.innerHTML = "";
+
+    weatherData.forEach(item => {
+      const iconUrl = `https://openweathermap.org/img/wn/${item.icon}@2x.png`;
+
+      let weatherContent = "";
+
+      if (mode === "text") weatherContent = item.weather;
+      if (mode === "icon") weatherContent = `<img class=\"weather-icon\" src=\"${iconUrl}\" />`;
+      if (mode === "both") {
+        weatherContent = `<div class=\"weather-cell\">\n          <img class=\"weather-icon\" src=\"${iconUrl}\" />\n          <span>${item.weather}</span>\n        </div>`;
+      }
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.name}</td>
+        <td>${item.time}</td>
+        <td>${weatherContent}</td>
+        <td>${item.low.toFixed(1)}</td>
+        <td>${item.high.toFixed(1)}</td>
+      `;
+
+      bodyEl.appendChild(row);
+    });
+  }
+
+  let refreshInterval;
+
+  function setupAutoRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    const freq = Number(localStorage.getItem("frequency") || 3600000);
+    refreshInterval = setInterval(loadWeather, freq);
+  }
+
+  applyFontSize();
+  loadWeather();
+  setupAutoRefresh();
+</script>
+
+</body>
+</html>
