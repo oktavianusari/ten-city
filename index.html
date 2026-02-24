@@ -83,6 +83,9 @@ input,select{width:100%;padding:6px;font-size:12px;border-radius:6px;border:1px 
 </thead>
 <tbody id="weatherBody"></tbody>
 </table>
+<div id="lastUpdate" style="font-size:10px;text-align:center;padding:4px 0;color:var(--text);opacity:0.7;">
+Last Update —
+</div>
 <div class="footer">
 <button onclick="openSettings()">Settings</button>
 </div>
@@ -177,6 +180,7 @@ if(typeof A==="string") return currentSort.direction==="asc"?A.localeCompare(B):
 return currentSort.direction==="asc"?A-B:B-A;
 });
 renderTable();
+updateLastUpdate();
 }
 
 function formatTime(date){
@@ -219,6 +223,7 @@ applyTheme();
 closeSettings();
 loadWeather();
 setupAutoRefresh();
+updateLastUpdate();
 }
 
 async function fetchWeather(city,key){
@@ -265,6 +270,22 @@ const row=document.createElement("tr");
 row.innerHTML=`<td>${item.name}</td><td>${item.time}</td><td>${weatherContent}</td><td>${item.low.toFixed(1)}</td><td>${item.high.toFixed(1)}</td>`;
 bodyEl.appendChild(row);
 });
+}
+
+function updateLastUpdate(){
+const el=document.getElementById("lastUpdate");
+const now=new Date();
+
+const dd=String(now.getDate()).padStart(2,'0');
+const mm=String(now.getMonth()+1).padStart(2,'0');
+const yyyy=now.getFullYear();
+
+let h=now.getHours();
+const m=String(now.getMinutes()).padStart(2,'0');
+const ap=h>=12?'PM':'AM';
+h=h%12||12;
+
+el.textContent=`Last Update ${dd} ${mm} ${yyyy} ${h}:${m} ${ap}`;
 }
 
 let refreshInterval;
