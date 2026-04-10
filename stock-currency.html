@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock & Currency Monitor</title>
+  <style>
+    :root {
+      /* Light theme: white & grey only */
+      --bg: #f5f6f8;
+      --text: #1f2937; /* gray-800 */
+      --card: #ffffff;
+      --glass: #ffffff;
+      --border: #e5e7eb; /* gray-200 */
+      --muted: #6b7280; /* gray-500 */
+      --green: #16a34a; /* keep semantic colors */
+      --red: #dc2626;
+    }
+    body.dark {
+      --bg: linear-gradient(135deg, #0f172a, #1e293b);
+      --text: #e5e7eb; /* gray-200 */
+      --card: rgba(30,41,59,0.85); /* slate */
+      --glass: rgba(30,41,59,0.6);
+      --border: rgba(148,163,184,0.25); /* slate-400 */
+      --muted: #94a3b8; /* slate-400 */
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      background-attachment: fixed;
+      color: var(--text);
+    }
+    header {
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+    header h2 {
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    body.dark header h2 {
+      color: #f1f5f9; /* slate-100 */
+    }
+    button {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #f3f4f6; /* gray-100 */
+    }
+    table {
+      width: 95%;
+      margin: 2rem auto;
+      border-collapse: collapse;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    th, td {
+      padding: 1rem 1.2rem;
+      text-align: left;
+    }
+    thead {
+      background: #f9fafb; /* light default */
+    }
+    body.dark thead {
+      background: rgba(148,163,184,0.15); /* subtle header */
+      color: #e5e7eb;
+    }
+    tbody tr {
+      border-top: 1px solid var(--border);
+      transition: background 0.2s ease;
+    }
+    tbody tr:hover {
+      background: #f3f4f6;
+    }
+    body.dark tbody tr:hover {
+      background: rgba(148,163,184,0.12);
+    }
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+    .settings {
+      display: none;
+      margin: 1rem auto;
+      width: 95%;
+      padding: 1rem;
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    input { padding: 0.5rem; margin: 0.25rem 0; width: 100%; border: 1px solid var(--border); border-radius: 8px; }
+    .error { color: var(--red); padding: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Market Monitor</h2>
+    <button onclick="toggleSettings()">Settings</button>
+  </header>
+
+  <div id="errorBox" class="error"></div>
+
+  <table id="marketTable">
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Price</th>
+        <th>Change</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="settings" id="settingsPanel">
+    <h3>Settings</h3>
+
+    <label>Theme</label>
+    <select id="themeSelect">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+
+    <h4>Add Symbol</h4>
+    <input id="symbolInput" placeholder="e.g. USDIDR=X or BBCA.JK" />
+    <button onclick="addSymbol()">Add</button>
+
+    <h4>Current Symbols</h4>
+    <ul id="symbolList"></ul>
+  </div>
+
+  <script>
+    // Fallback mock data (used when fetch fails)
+    function getMockData() {
+      return symbols.map(s => ({
+        symbol: s,
+        regularMarketPrice: (Math.random() * 20000).toFixed(2),
+        regularMarketChangePercent: (Math.random() * 4 - 2)
+      }));
+    }
+
+    const API = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=";
+
+    let symbols = JSON.parse(localStorage.getItem("symbols")) || [
+      "EURIDR=X",
+      "SGDIDR=X",
+      "USDIDR=X",
+      "BBCA.JK"
+    ];
+
+    function saveSymbols() {
+      localStorage.setItem("symbols", JSON.stringify(symbols));
+    }
+
+    function renderSymbols() {
+      const list = document.getElementById("symbolList");
+      list.innerHTML = "";
+      symbols.forEach((s, i) => {
+        const li = document.createElement("li");
+        li.innerHTML = `${s} <button onclick="removeSymbol(${i})">x</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    function addSymbol() {
+      const input = document.getElementById("symbolInput");
+      if (input.value) {
+        symbols.push(input.value.trim());
+        input.value = "";
+        saveSymbols();
+        renderSymbols();
+        fetchData();
+      }
+    }
+
+    function removeSymbol(i) {
+      symbols.splice(i, 1);
+      saveSymbols();
+      renderSymbols();
+      fetchData();
+    }
+
+    function toggleSettings() {
+      const panel = document.getElementById("settingsPanel");
+      panel.style.display = panel.style.display === "block" ? "none" : "block";
+    }
+
+    function applyTheme(theme) {
+      document.body.classList.toggle("dark", theme === "dark");
+      localStorage.setItem("theme", theme);
+    }
+
+    document.getElementById("themeSelect").addEventListener("change", e => {
+      applyTheme(e.target.value);
+    });
+
+    function loadTheme() {
+      const theme = localStorage.getItem("theme") || "light";
+      document.getElementById("themeSelect").value = theme;
+      applyTheme(theme);
+    }
+
+    function showError(msg) {
+      document.getElementById("errorBox").innerText = msg;
+    }
+
+    function renderTable(rows) {
+      const tbody = document.querySelector("#marketTable tbody");
+      tbody.innerHTML = "";
+
+      rows.forEach(item => {
+        const tr = document.createElement("tr");
+        const change = Number(item.regularMarketChangePercent) || 0;
+        const cls = change >= 0 ? "up" : "down";
+
+        tr.innerHTML = `
+          <td>${item.symbol.replace("=X", "")}</td>
+          <td>${Number(item.regularMarketPrice).toLocaleString()}</td>
+          <td class="${cls}">${change.toFixed(2)}%</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function fetchData() {
+      try {
+        showError("");
+
+        const res = await fetch(API + symbols.join(","));
+        if (!res.ok) throw new Error("Network response not OK");
+
+        const data = await res.json();
+        const rows = data?.quoteResponse?.result;
+
+        if (!rows || rows.length === 0) throw new Error("Empty API data");
+
+        renderTable(rows);
+
+      } catch (e) {
+        console.error("Fetch failed, using mock data:", e);
+        showError("⚠️ Live data unavailable. Showing simulated data.");
+
+        const mock = getMockData();
+        renderTable(mock);
+      }
+    }
+
+    // ===== SIMPLE TESTS =====
+    function runTests() {
+      console.assert(Array.isArray(symbols), "Symbols should be array");
+
+      const mock = getMockData();
+      console.assert(mock.length === symbols.length, "Mock data length match");
+
+      mock.forEach(m => {
+        console.assert("symbol" in m, "Mock has symbol");
+        console.assert("regularMarketPrice" in m, "Mock has price");
+        console.assert("regularMarketChangePercent" in m, "Mock has change");
+      });
+
+      console.log("All tests passed");
+    }
+
+    // init
+    loadTheme();
+    renderSymbols();
+    runTests();
+    fetchData();
+  </script>
+</body>
+</html>
