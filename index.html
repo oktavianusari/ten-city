@@ -5,337 +5,224 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>City Weather</title>
 <style>
-:root {
-  --bg:#f6f7f9;
-  --card:#ffffff;
-  --text:#111827;
-  --border:#e5e7eb;
-  --header:#fafafa;
-  --hover:#f9fafb;
-  --font-size:12px;
-}
+:root{--bg:#f6f7f9;--card:#ffffff;--text:#111827;--border:#e5e7eb;--header:#fafafa;--hover:#f9fafb;--font-size:12px;}
+body.dark{--bg:#111827;--card:#1f2937;--text:#f3f4f6;--border:#374151;--header:#1f2937;--hover:#273244;}
+body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:10px;}
+.app{width:620px;height:520px;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;font-size:var(--font-size);} 
 
-body.dark {
-  --bg:#111827;
-  --card:#1f2937;
-  --text:#f3f4f6;
-  --border:#374151;
-  --header:#1f2937;
-  --hover:#273244;
-}
-
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  background:var(--bg);
-  color:var(--text);
-  display:flex;
-  justify-content:center;
-  padding:10px;
-}
-
-.app{
-  width:620px;
-  height:500px;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:10px;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  font-size:var(--font-size);
-}
+.carousel{padding:10px;border-bottom:1px solid var(--border);overflow:hidden;position:relative;}
+.progress-bar{position:absolute;bottom:0;left:0;height:4px;background:#9ca3af;width:0%;transition:width linear;}
+.carousel-main{display:grid;grid-template-columns:80px 1fr;align-items:center;opacity:1;transition:opacity .5s ease,transform .5s ease;}
+.fade-out{opacity:0;transform:translateX(-20px);} 
+.fade-in{opacity:1;transform:translateX(0);} 
+.carousel-icon{width:70px;height:70px;}
+.carousel-city{font-size:1.4em;font-weight:bold;}
+.carousel-time{font-size:.9em;opacity:.7;}
+.carousel-temp{margin-top:5px;font-size:1.1em;}
 
 table{width:100%;border-collapse:collapse;font-size:inherit;}
 thead{background:var(--header);} 
-th,td{padding:5px 6px;border-bottom:1px solid var(--border);white-space:nowrap;}
-th{font-size:0.85em;cursor:pointer;user-select:none;}
-th.sort-asc::after{content:" ▲";font-size:0.7em;}
-th.sort-desc::after{content:" ▼";font-size:0.7em;}
-tbody tr{background:var(--card);} 
-tbody tr:hover{background:var(--hover);} 
+th,td{padding:6px;border-bottom:1px solid var(--border);} 
 
-.weather-cell{display:flex;align-items:center;gap:6px;}
-.weather-icon{width:16px;height:16px;}
-
-.footer{margin-top:auto;padding:6px;display:flex;justify-content:center;border-top:1px solid var(--border);background:var(--header);} 
-button{font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;}
-
-.modal{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;}
-.modal-content{background:var(--card);color:var(--text);padding:18px;border-radius:10px;width:380px;border:1px solid var(--border);} 
-.form-group{margin-bottom:12px;} 
-input,select{width:100%;padding:6px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);} 
-.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+/* SETTINGS INLINE */
+.settings-inline{border-top:1px solid var(--border);padding:10px;display:none;}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+input,select{padding:10px;font-size:14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);} 
+button{padding:10px 18px;font-size:14px;border-radius:25px;border:1px solid var(--border);background:var(--card);color:var(--text);} 
+.footer{padding:6px;text-align:center;border-top:1px solid var(--border);} 
 </style>
 </head>
 <body>
+<div class="app">
 
-<div class="app" id="appRoot">
+<div class="carousel">
+<div id="progressBar" class="progress-bar"></div>
+<div id="carouselMain" class="carousel-main">
+<img id="carouselIcon" class="carousel-icon" />
+<div>
+<div id="carouselCity" class="carousel-city"></div>
+<div id="carouselTime" class="carousel-time"></div>
+<div id="carouselTemp" class="carousel-temp"></div>
+</div>
+</div>
+</div>
+
 <table>
-<thead>
-<tr>
-<th data-key="name">City</th>
-<th data-key="weather">Weather</th>
-<th data-key="low">Low °C</th>
-<th data-key="high">High °C</th>
-<th data-key="time">Local Time</th>
-</tr>
-</thead>
+<thead><tr><th>City</th><th>Weather</th><th>Low</th><th>High</th><th>Time</th></tr></thead>
 <tbody id="weatherBody"></tbody>
 </table>
-<div id="lastUpdate" style="font-size:10px;text-align:center;padding:4px 0;color:var(--text);opacity:0.7;">
-Last Update —
-</div>
+
 <div class="footer">
-<button onclick="openSettings()">Settings</button>
-</div>
-</div>
-
-<div class="modal" id="settingsModal">
-<div class="modal-content">
-<h3 style="margin-top:0">Settings</h3>
-
-<div class="form-group">
-<label>OpenWeatherMap API Key</label>
-<input id="apiKeyInput" />
+<button onclick="toggleSettings()">Settings</button>
 </div>
 
-<div class="form-group">
-<label>Cities (max 15, comma separated)</label>
-<input id="citiesInput" />
-</div>
-
-<div class="form-group">
-<label>Update Frequency</label>
-<select id="frequencyInput">
-<option value="1800000">30 Minutes</option>
-<option value="3600000">1 Hour</option>
-<option value="10800000">3 Hours</option>
-<option value="28800000">8 Hours</option>
+<!-- SETTINGS BELOW TABLE -->
+<div id="settingsInline" class="settings-inline">
+<div class="settings-grid">
+<input id="apiKeyInput" placeholder="API Key" />
+<input id="citiesInput" placeholder="Cities" />
+<select id="speedInput">
+<option value="10000">10 sec</option>
+<option value="20000">20 sec</option>
+<option value="30000">30 sec</option>
+<option value="60000">60 sec</option>
 </select>
-</div>
-
-<div class="form-group">
-<label>Weather Display</label>
-<select id="displayModeInput">
-<option value="text">Text Only</option>
-<option value="icon">Icon Only</option>
-<option value="both">Text & Icon</option>
-</select>
-</div>
-
-<div class="form-group">
-<label>Font Size</label>
-<select id="fontSizeInput">
-<option value="11">Small</option>
-<option value="12">Default</option>
-<option value="13">Large</option>
-<option value="14">Extra Large</option>
-</select>
-</div>
-
-<div class="form-group">
-<label>Theme</label>
 <select id="themeInput">
 <option value="light">Light</option>
 <option value="dark">Dark</option>
 </select>
 </div>
-
-<div class="form-group">
-<label>Temperature Color Scale</label>
-<select id="tempColorInput">
-<option value="on">On</option>
-<option value="off">Off</option>
-</select>
-</div>
-
-<div class="actions">
+<div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px;">
 <button onclick="closeSettings()">Cancel</button>
 <button onclick="saveSettings()">Save</button>
 </div>
 </div>
+
 </div>
 
 <script>
-const DEFAULT_API="894db14e4209491650f3043573870713";
-const DEFAULT_CITIES="Bekasi, Jakarta, Ambarawa, Lembang, Paris, Brussels, Amsterdam, Rotterdam, Cologne, Milan, Engelberg, Vatican";
-
-if(!localStorage.getItem("apiKey")) localStorage.setItem("apiKey",DEFAULT_API);
-if(!localStorage.getItem("cities")) localStorage.setItem("cities",DEFAULT_CITIES);
-if(!localStorage.getItem("displayMode")) localStorage.setItem("displayMode","both");
-if(!localStorage.getItem("fontSize")) localStorage.setItem("fontSize","12");
-/* Default theme = Dark (does not override existing user setting) */
-if(!localStorage.getItem("theme")) localStorage.setItem("theme","dark");
-if(!localStorage.getItem("tempColor")) localStorage.setItem("tempColor","on");
-
-const bodyEl=document.getElementById("weatherBody");
-const modal=document.getElementById("settingsModal");
-const headers=document.querySelectorAll("th");
-const appRoot=document.getElementById("appRoot");
-
 let weatherData=[];
-let currentSort={key:null,direction:"asc"};
+let carouselIndex=0;
+let interval;
+let paused=false;
+let startX=0;
 
-headers.forEach(th=>th.addEventListener("click",()=>sortTable(th.dataset.key,th)));
+function startCarousel(){
+  clearInterval(interval);
+  const speed = Number(localStorage.getItem("speed") || 30000);
+  startProgressBar(speed);
+  interval = setInterval(function(){
+    if(paused || weatherData.length===0) return;
+    nextSlide();
+    startProgressBar(speed);
+  }, speed);
+}
 
-function sortTable(key,headerEl){
-if(!key) return;
-headers.forEach(h=>h.classList.remove("sort-asc","sort-desc"));
-if(currentSort.key===key){currentSort.direction=currentSort.direction==="asc"?"desc":"asc";} else {currentSort.key=key;currentSort.direction="asc";}
-headerEl.classList.add(currentSort.direction==="asc"?"sort-asc":"sort-desc");
-weatherData.sort((a,b)=>{
-let A=a[key],B=b[key];
-if(typeof A==="string") return currentSort.direction==="asc"?A.localeCompare(B):B.localeCompare(A);
-return currentSort.direction==="asc"?A-B:B-A;
+function nextSlide(){
+  const el=document.getElementById("carouselMain");
+  el.classList.add("fade-out");
+  setTimeout(function(){
+    carouselIndex=(carouselIndex+1)%weatherData.length;
+    renderCarousel();
+    el.classList.remove("fade-out");
+    el.classList.add("fade-in");
+  },300);
+}
+
+function prevSlide(){
+  carouselIndex=(carouselIndex-1+weatherData.length)%weatherData.length;
+  renderCarousel();
+}
+
+function startProgressBar(duration){
+  const bar=document.getElementById("progressBar");
+  bar.style.transition='none';
+  bar.style.width='0%';
+  setTimeout(function(){
+    bar.style.transition='width '+duration+'ms linear';
+    bar.style.width='100%';
+  },50);
+}
+
+function renderCarousel(){
+  const item=weatherData[carouselIndex];
+  if(!item) return;
+  document.getElementById("carouselCity").textContent=item.name;
+  document.getElementById("carouselTime").textContent=item.time;
+  document.getElementById("carouselTemp").textContent='Low '+item.low.toFixed(1)+'°C | High '+item.high.toFixed(1)+'°C';
+  document.getElementById("carouselIcon").src='https://openweathermap.org/img/wn/'+item.icon+'@4x.png';
+}
+
+const carouselEl=document.querySelector(".carousel");
+carouselEl.addEventListener("touchstart",function(e){paused=true;startX=e.touches[0].clientX;});
+carouselEl.addEventListener("touchend",function(e){
+  const diff=e.changedTouches[0].clientX-startX;
+  if(diff>50) prevSlide();
+  if(diff<-50) nextSlide();
+  paused=false;
 });
-renderTable();
-updateLastUpdate();
+carouselEl.addEventListener("mousedown",function(){paused=true;});
+carouselEl.addEventListener("mouseup",function(){paused=false;});
+carouselEl.addEventListener("mouseenter",function(){paused=true;});
+carouselEl.addEventListener("mouseleave",function(){paused=false;});
+
+async function fetchWeather(city,key){
+  const url='https://api.openweathermap.org/data/2.5/weather?q='+city+'&units=metric&appid='+key;
+  const res=await fetch(url);
+  if(!res.ok) return null;
+  return res.json();
 }
 
 function formatTime(date){
-let h=date.getHours();
-const m=date.getMinutes().toString().padStart(2,"0");
-const ap=h>=12?"PM":"AM";
-h=h%12||12;
-return `${h}:${m}${ap}`;
-}
-
-function applyFontSize(){
-appRoot.style.setProperty("--font-size",localStorage.getItem("fontSize")+"px");
-}
-
-function applyTheme(){
-document.body.classList.toggle("dark",localStorage.getItem("theme")==="dark");
-}
-
-function openSettings(){
-apiKeyInput.value=localStorage.getItem("apiKey");
-citiesInput.value=localStorage.getItem("cities");
-frequencyInput.value=localStorage.getItem("frequency")||3600000;
-displayModeInput.value=localStorage.getItem("displayMode");
-fontSizeInput.value=localStorage.getItem("fontSize");
-themeInput.value=localStorage.getItem("theme");
-tempColorInput.value=localStorage.getItem("tempColor");
-modal.style.display="flex";
-}
-
-function closeSettings(){modal.style.display="none";}
-
-function saveSettings(){
-localStorage.setItem("apiKey",apiKeyInput.value);
-localStorage.setItem("cities",citiesInput.value);
-localStorage.setItem("frequency",frequencyInput.value);
-localStorage.setItem("displayMode",displayModeInput.value);
-localStorage.setItem("fontSize",fontSizeInput.value);
-localStorage.setItem("theme",themeInput.value);
-localStorage.setItem("tempColor",tempColorInput.value);
-applyFontSize();
-applyTheme();
-closeSettings();
-loadWeather();
-setupAutoRefresh();
-updateLastUpdate();
-}
-
-async function fetchWeather(city,key){
-const url=`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${key}`;
-const res=await fetch(url);
-if(!res.ok) return null;
-return res.json();
+  let h=date.getHours();
+  const m=String(date.getMinutes()).padStart(2,'0');
+  const ap=h>=12?'PM':'AM';
+  h=h%12||12;
+  return h+':'+m+' '+ap;
 }
 
 function getLocalTime(offset){
-const utc=new Date().getTime()+new Date().getTimezoneOffset()*60000;
-return new Date(utc+offset*1000);
-}
-
-function getTempColor(temp){
-const dark=document.body.classList.contains("dark");
-if(temp<=0) return dark?"#93c5fd":"#1d4ed8";
-if(temp<=10) return dark?"#60a5fa":"#2563eb";
-if(temp<=20) return dark?"#34d399":"#059669";
-if(temp<=30) return dark?"#facc15":"#ca8a04";
-if(temp<=35) return dark?"#fb923c":"#ea580c";
-return dark?"#f87171":"#dc2626";
+  const utc=new Date().getTime()+new Date().getTimezoneOffset()*60000;
+  return new Date(utc+offset*1000);
 }
 
 async function loadWeather(){
-const key=localStorage.getItem("apiKey");
-const cities=localStorage.getItem("cities").split(",").map(c=>c.trim()).slice(0,15);
-weatherData=[];
-for(const city of cities){
-const data=await fetchWeather(city,key);
-if(!data) continue;
-weatherData.push({
-name:data.name,
-time:formatTime(getLocalTime(data.timezone)),
-weather:data.weather[0].description.replace(/\b\w/g,l=>l.toUpperCase()),
-low:data.main.temp_min,
-high:data.main.temp_max,
-icon:data.weather[0].icon
-});
-}
-renderTable();
+  const key=localStorage.getItem("apiKey")||"";
+  const cities=(localStorage.getItem("cities")||"").split(",");
+  weatherData=[];
+
+  for(const c of cities){
+    const data=await fetchWeather(c.trim(),key);
+    if(!data) continue;
+    weatherData.push({
+      name:data.name,
+      time:formatTime(getLocalTime(data.timezone)),
+      weather:data.weather[0].description,
+      low:data.main.temp_min,
+      high:data.main.temp_max,
+      icon:data.weather[0].icon
+    });
+  }
+
+  renderTable();
+  renderCarousel();
+  startCarousel();
 }
 
 function renderTable(){
-const mode=localStorage.getItem("displayMode");
-const colorOn=localStorage.getItem("tempColor")==="on";
-bodyEl.innerHTML="";
-
-weatherData.forEach(item=>{
-
-const lowColor=colorOn?getTempColor(item.low):"inherit";
-const highColor=colorOn?getTempColor(item.high):"inherit";
-
-const iconUrl=`https://openweathermap.org/img/wn/${item.icon}@2x.png`;
-let weatherContent="";
-
-if(mode==="text") weatherContent=item.weather;
-if(mode==="icon") weatherContent=`<img class=\"weather-icon\" src=\"${iconUrl}\"/>`;
-if(mode==="both") weatherContent=`<div class=\"weather-cell\"><img class=\"weather-icon\" src=\"${iconUrl}\"/><span>${item.weather}</span></div>`;
-
-const row=document.createElement("tr");
-row.innerHTML=`
-<td>${item.name}</td>
-<td>${weatherContent}</td>
-<td style="color:${lowColor};font-weight:600;">${item.low.toFixed(1)}</td>
-<td style="color:${highColor};font-weight:600;">${item.high.toFixed(1)}</td>
-<td>${item.time}</td>`;
-
-bodyEl.appendChild(row);
-});
+  const body=document.getElementById("weatherBody");
+  body.innerHTML="";
+  weatherData.slice(0,10).forEach(function(w){
+    const row=document.createElement("tr");
+    row.innerHTML='<td>'+w.name+'</td><td>'+w.weather+'</td><td>'+w.low.toFixed(1)+'</td><td>'+w.high.toFixed(1)+'</td><td>'+w.time+'</td>';
+    body.appendChild(row);
+  });
 }
 
-function updateLastUpdate(){
-const el=document.getElementById("lastUpdate");
-const now=new Date();
-
-const dd=String(now.getDate()).padStart(2,'0');
-const mm=String(now.getMonth()+1).padStart(2,'0');
-const yyyy=now.getFullYear();
-
-let h=now.getHours();
-const m=String(now.getMinutes()).padStart(2,'0');
-const ap=h>=12?'PM':'AM';
-h=h%12||12;
-
-el.textContent=`Last Update ${dd} ${mm} ${yyyy} ${h}:${m} ${ap}`;
+function toggleSettings(){
+  const el=document.getElementById("settingsInline");
+  el.style.display = (el.style.display==='block') ? 'none' : 'block';
 }
 
-let refreshInterval;
-function setupAutoRefresh(){
-if(refreshInterval) clearInterval(refreshInterval);
-const freq=Number(localStorage.getItem("frequency")||3600000);
-refreshInterval=setInterval(loadWeather,freq);
+function closeSettings(){
+  document.getElementById("settingsInline").style.display='none';
 }
 
-applyFontSize();
-applyTheme();
+function saveSettings(){
+  localStorage.setItem("apiKey",apiKeyInput.value);
+  localStorage.setItem("cities",citiesInput.value);
+  localStorage.setItem("speed",speedInput.value);
+  localStorage.setItem("theme",themeInput.value);
+  document.body.classList.toggle("dark",themeInput.value==='dark');
+  closeSettings();
+  loadWeather();
+}
+
+if(!localStorage.getItem("speed")) localStorage.setItem("speed","30000");
+if(!localStorage.getItem("theme")) localStorage.setItem("theme","dark");
+document.body.classList.toggle("dark",localStorage.getItem("theme")==='dark');
+
 loadWeather();
-setupAutoRefresh();
 </script>
-
 </body>
 </html>
