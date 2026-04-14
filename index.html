@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Ten City Weather</title>
+<title>City Weather</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#111827">
 <link rel="apple-touch-icon" href="icon.png">
@@ -238,8 +238,8 @@ function saveSettings(){
 }
 
 if(!localStorage.getItem("speed")) localStorage.setItem("speed","30000");
-if(!localStorage.getItem("theme")) localStorage.setItem("theme","dark");
-if(!localStorage.getItem("cities")) localStorage.setItem("cities","Bekasi, Jakarta, Semarang, Lembang, Paris, Brussels, Amsterdam, Rotterdam, Cologne, Milan, Rome");
+if(!localStorage.getItem("theme")) localStorage.setItem("theme","light");
+if(!localStorage.getItem("cities")) localStorage.setItem("cities","Bekasi, Semarang, Lembang, Paris, Brussels, Amsterdam, Rotterdam, Cologne, Milan, Rome");
 
 document.body.classList.toggle("dark",localStorage.getItem("theme")==='dark');
 
